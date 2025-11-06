@@ -1,0 +1,41 @@
+{
+  "name": "aicar-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3006",
+    "build": "next build",
+    "start": "next start -p 3006",
+    "typecheck": "tsc --noEmit",
+    "worker:distance:once": "tsx -r dotenv/config -r tsconfig-paths/register scripts/cron/rankings/distance/materialize-distance.ts",
+    "worker:soh:once": "tsx -r dotenv/config -r tsconfig-paths/register scripts/cron/rankings/soh/materialize-soh.ts",
+    "workers:once": "npm run worker:distance:once && npm run worker:soh:once",
+    "worker:loop": "bash scripts/cron/run.sh"
+  },
+  "dependencies": {
+    "@influxdata/influxdb-client": "^1.35.0",
+    "@supabase/supabase-js": "^2.78.0",
+    "chart.js": "^4.5.1",
+    "csv-parse": "^6.1.0",
+    "ml-matrix": "^6.12.1",
+    "next": "14.2.15",
+    "pg": "^8.16.3",
+    "react": "^18.3.1",
+    "react-chartjs-2": "^5.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.12.7",
+    "redis": "^4.7.1",
+    "swr": "^2.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "@types/pg": "^8.15.6",
+    "@types/react": "^18.3.11",
+    "dotenv": "^17.2.3",
+    "server-only": "^0.0.1",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,88 @@
+services:
+  # FastAPI 머신러닝 인퍼런스 서버
+  jeon-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: jeon-api
+    ports:
+      # 외부 접근: keti-ev1.iptime.org:8001
+      - "0.0.0.0:8001:8000"  # 모든 인터페이스에서 접근 가능 (keti-ev1.iptime.org:8001)
+    environment:
+      - MODEL_PATH=${MODEL_PATH:-}
+      - USE_ONNXRUNTIME=${USE_ONNXRUNTIME:-false}
+      # InfluxDB 설정 (SOC 추정용)
+      - INFLUXDB_URL=${INFLUXDB_URL:-}
+      - INFLUXDB_TOKEN=${INFLUXDB_TOKEN:-}
+      - INFLUXDB_ORG=${INFLUXDB_ORG:-}
+      - INFLUXDB_BUCKET=${INFLUXDB_BUCKET:-aicar_bms}
+      # SOC 모델 경로
+      - SOC_MODEL_PATH=${SOC_MODEL_PATH:-models/gru_voltage.pt}
+    # volumes:
+    #   # 모델 파일이 있는 경우 마운트
+    #   - ./models:/app/models:ro
+    #   # 데이터 디렉토리 (필요시)
+    #   - ./data:/app/data:ro
+    networks:
+      - app-net
+    # GPU 사용 시 (Compose v3.8+)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    # 또는 간단하게:
+    # runtime: nvidia
+    # environment:
+    #   - NVIDIA_VISIBLE_DEVICES=all
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Next.js 웹 애플리케이션
+  jeon-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jeon-nextjs
+    ports:
+      # 외부 접근: keti-ev1.iptime.org:3006
+      - "0.0.0.0:3006:3006"  # 모든 인터페이스에서 접근 가능 (keti-ev1.iptime.org:3006)
+    environment:
+      # FastAPI 서버 URL (도커 네트워크 내부)
+      - FASTAPI_URL=http://jeon-api:8000
+      # 기타 환경 변수는 .env 파일에서 로드
+      - NODE_ENV=production
+    depends_on:
+      jeon-api:
+        condition: service_healthy
+    networks:
+      - app-net
+    restart: unless-stopped
+
+  # Nginx 리버스 프록시 (선택적 - 포트 번호 없이 접근하려면 주석 해제)
+  # nginx:
+  #   build:
+  #     context: ./nginx
+  #     dockerfile: Dockerfile
+  #   container_name: jeon-nginx
+  #   ports:
+  #     - "0.0.0.0:80:80"  # HTTP
+  #   depends_on:
+  #     - jeon-web
+  #     - jeon-api
+  #   networks:
+  #     - app-net
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+networks:
+  app-net:
+    driver: bridge
